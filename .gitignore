@@ -1,0 +1,16 @@
+# Environment — never commit secrets
+.env
+*.env.local
+*.env.production
+.venv/
+
+# PDF
+*.pdf
+
+# Python
+__pycache__/
+*.pyc
+*.pycache/
+
+# Claude Code
+.claude/

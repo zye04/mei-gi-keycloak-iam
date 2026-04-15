@@ -46,14 +46,14 @@ source .venv/bin/activate
 cp .env.example .env
 ```
 
-Editar o `.env` e preencher todos os valores `CHANGE_ME`. Gerar passwords seguras com:
+Editar o `.env` e preencher os valores `CHANGE_ME`. Gerar passwords seguras com:
 
 ```bash
 openssl rand -base64 32   # para passwords
 openssl rand -hex 32      # para APP_SECRET_KEY
 ```
 
-> `KEYCLOAK_CLIENT_SECRET` fica por preencher nesta fase — ver passo 5.
+> `KEYCLOAK_CLIENT_SECRET` está pré-configurado com um valor fixo de desenvolvimento — não é necessário alterar.
 
 ### 4. Arrancar os serviços *(disponível a partir da Fase 2)*
 
@@ -62,17 +62,9 @@ docker compose up -d
 ```
 
 O Keycloak importa automaticamente o realm `retailcorp` na primeira execução.
-Aguardar ~90 segundos até o health check ficar verde.
+Os healthchecks garantem a ordem de arranque correcta (postgres → keycloak → app).
 
-### 5. Obter o client secret do Keycloak *(Fase 2)*
-
-1. Abrir [http://localhost:8080/admin](http://localhost:8080/admin)
-2. Login com `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` definidos no `.env`
-3. Selecionar realm **retailcorp** → Clients → **retailcorp-portal** → Credentials
-4. Copiar o valor para `KEYCLOAK_CLIENT_SECRET` no `.env`
-5. `docker compose restart app`
-
-### 6. Verificar
+### 5. Verificar
 
 - Portal: [http://localhost:8000](http://localhost:8000)
 - Keycloak Admin Console: [http://localhost:8080/admin](http://localhost:8080/admin)

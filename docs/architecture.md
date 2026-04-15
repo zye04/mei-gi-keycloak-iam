@@ -151,11 +151,11 @@ Realm: retailcorp
 │   └── supplier
 │
 ├── Groups
-│   ├── /it
-│   ├── /rh
-│   ├── /lojas
-│   ├── /armazem
-│   └── /fornecedores
+│   ├── /it          → role: admin
+│   ├── /hr          → role: hr
+│   ├── /stores      → role: store_manager
+│   ├── /warehouses  → role: warehouse
+│   └── /suppliers   → role: supplier
 │
 ├── Clients
 │   └── retailcorp-portal (confidential, OIDC)
@@ -182,10 +182,12 @@ Dois níveis complementares:
 ### Eventos Keycloak configurados
 
 - `LOGIN` / `LOGIN_ERROR`
-- `LOGOUT`
-- `UPDATE_TOTP` / `REMOVE_TOTP`
-- `CODE_TO_TOKEN` / `REFRESH_TOKEN`
-- Admin Events: `CREATE_USER`, `UPDATE_USER`, `DELETE_USER`, `UPDATE_ROLE_MAPPING`
+- `LOGOUT` / `LOGOUT_ERROR`
+- `UPDATE_TOTP` / `UPDATE_TOTP_ERROR` / `REMOVE_TOTP` / `REMOVE_TOTP_ERROR`
+- `CODE_TO_TOKEN` / `CODE_TO_TOKEN_ERROR`
+- `REFRESH_TOKEN` / `REFRESH_TOKEN_ERROR`
+- `UPDATE_PASSWORD` / `UPDATE_PASSWORD_ERROR`
+- Admin Events (com detalhes): `CREATE_USER`, `UPDATE_USER`, `DELETE_USER`, `UPDATE_ROLE_MAPPING`
 
 ---
 

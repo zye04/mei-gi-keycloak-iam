@@ -14,7 +14,7 @@
 
 ## Decisões
 
-### Identity Provider: Keycloak 26.1
+### Identity Provider: Keycloak 26.2
 
 **Escolhido porque:**
 - Requisito explícito do enunciado do TP
@@ -22,7 +22,7 @@
 - Imagem Docker oficial (`quay.io/keycloak/keycloak`)
 - Suporte a import/export de realm para reprodutibilidade
 
-**Versão 26.1:** última versão estável no início do projeto (março 2026)
+**Versão 26.2:** última versão estável no início do projeto (março 2026)
 
 ### Base de Dados: PostgreSQL 16
 
@@ -72,4 +72,4 @@
 - Stack totalmente em Python — coerência entre app e scripts JML
 - Keycloak Admin Console disponível em `:8080` para debug e inspeção
 - Sem app mobile no âmbito (mantém demo focada)
-- Client secret do OIDC client deve ser obtido/regenerado após primeiro `docker compose up` e colocado no `.env`
+- Client secret do OIDC client está pré-configurado com valor fixo de desenvolvimento no `realm-export.json` e `.env.example` — `docker compose up` é totalmente reproduzível sem passos manuais

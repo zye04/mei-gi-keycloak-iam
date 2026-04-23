@@ -4,8 +4,10 @@
 *.env.production
 .venv/
 
-# PDF
+# Extensions
 *.pdf
+*.xml
+*.log
 
 # Python
 __pycache__/

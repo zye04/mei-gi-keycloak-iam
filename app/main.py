@@ -1,10 +1,10 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 from config import settings
-from auth import oauth
+from auth import oauth, require_role
 
 app = FastAPI(title="RetailCorp Portal")
 templates = Jinja2Templates(directory="templates")
@@ -58,3 +58,7 @@ async def dashboard(request: Request):
     if not user:
         return RedirectResponse(url="/login")
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": user})
+
+@app.get("/admin")
+async def admin_panel(user: dict = Depends(require_role("admin"))):
+    return {"message": "Welcome, Administrator", "user": user["preferred_username"]}

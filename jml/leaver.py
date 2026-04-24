@@ -1,21 +1,6 @@
-import os
 import argparse
 import sys
-from dotenv import load_dotenv
-from keycloak import KeycloakAdmin
-
-# Carregar variáveis de ambiente
-load_dotenv(dotenv_path="../.env")
-
-def get_admin_client():
-    return KeycloakAdmin(
-        server_url=os.getenv("KEYCLOAK_INTERNAL_URL"),
-        username=os.getenv("KEYCLOAK_ADMIN_USER"),
-        password=os.getenv("KEYCLOAK_ADMIN_PASSWORD"),
-        realm_name=os.getenv("KEYCLOAK_REALM"),
-        user_realm_name="master",
-        verify=True
-    )
+from client import get_client
 
 def main():
     parser = argparse.ArgumentParser(description="RetailCorp JML: Leaver - Desativar colaborador")
@@ -28,14 +13,12 @@ def main():
         print(f"[!] Aviso: Para desativar '{args.username}', use a flag --confirm.")
         sys.exit(0)
 
-    keycloak_admin = get_admin_client()
+    client = get_client()
+    keycloak_admin = client.admin
 
     try:
-        # 1. Obter ID do utilizador
-        user_id = keycloak_admin.get_user_id(args.username)
-        if not user_id:
-            print(f"[ERROR] Utilizador '{args.username}' não encontrado.")
-            sys.exit(1)
+        # 1. Obter ID do utilizador (centralizado no client)
+        user_id = client.get_user_id(args.username)
 
         print(f"[*] A processar 'Leaver' para '{args.username}'...")
 

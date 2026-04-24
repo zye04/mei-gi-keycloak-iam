@@ -1,21 +1,6 @@
-import os
 import argparse
 import sys
-from dotenv import load_dotenv
-from keycloak import KeycloakAdmin, KeycloakGetError
-
-# Carregar variáveis de ambiente
-load_dotenv(dotenv_path="../.env")
-
-def get_admin_client():
-    return KeycloakAdmin(
-        server_url=os.getenv("KEYCLOAK_INTERNAL_URL"),
-        username=os.getenv("KEYCLOAK_ADMIN_USER"),
-        password=os.getenv("KEYCLOAK_ADMIN_PASSWORD"),
-        realm_name=os.getenv("KEYCLOAK_REALM"),
-        user_realm_name="master",
-        verify=True
-    )
+from client import get_client
 
 def main():
     parser = argparse.ArgumentParser(description="RetailCorp JML: Mover - Alterar role e revogar sessões")
@@ -26,27 +11,28 @@ def main():
                         help="Novo role a atribuir")
 
     args = parser.parse_args()
-    keycloak_admin = get_admin_client()
+    client = get_client()
+    keycloak_admin = client.admin
 
     try:
-        # 1. Obter ID do utilizador
-        user_id = keycloak_admin.get_user_id(args.username)
-        if not user_id:
-            print(f"[ERROR] Utilizador '{args.username}' não encontrado.")
-            sys.exit(1)
+        # 1. Obter ID do utilizador (centralizado no client)
+        user_id = client.get_user_id(args.username)
 
         print(f"[*] A processar 'Mover' para '{args.username}'...")
 
         # 2. Remover Role antigo
-        try:
-            old_role_data = keycloak_admin.get_realm_role(args.from_role)
-            keycloak_admin.delete_realm_roles_from_user(user_id, [old_role_data])
-            print(f"[+] Role antigo '{args.from_role}' removido.")
-        except Exception:
-            print(f"[!] Aviso: Role '{args.from_role}' não estava atribuído ou não existe.")
+        old_role_data = client.get_role(args.from_role, required=False)
+        if old_role_data:
+            try:
+                keycloak_admin.delete_realm_roles_from_user(user_id, [old_role_data])
+                print(f"[+] Role antigo '{args.from_role}' removido.")
+            except Exception:
+                print(f"[!] Aviso: Role '{args.from_role}' não estava atribuído.")
+        else:
+            print(f"[!] Aviso: Role antigo '{args.from_role}' não existe no Keycloak. A ignorar remoção.")
 
         # 3. Atribuir Novo Role
-        new_role_data = keycloak_admin.get_realm_role(args.to_role)
+        new_role_data = client.get_role(args.to_role, required=True)
         keycloak_admin.assign_realm_roles(user_id, [new_role_data])
         print(f"[+] Novo role '{args.to_role}' atribuído.")
 
@@ -56,8 +42,7 @@ def main():
         print("[+] Sessões ativas revogadas. O utilizador terá de fazer login novamente.")
 
         # 5. Se o novo role exigir MFA e o user não tiver, forçar configuração
-        sensitive_roles = ["admin", "hr", "store_manager"]
-        if args.to_role in sensitive_roles:
+        if args.to_role in client.MFA_REQUIRED_ROLES:
             keycloak_admin.update_user(user_id, {
                 "requiredActions": ["CONFIGURE_TOTP"]
             })

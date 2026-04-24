@@ -1,22 +1,7 @@
-import os
 import argparse
 import sys
-from dotenv import load_dotenv
-from keycloak import KeycloakAdmin, KeycloakPostError
-
-# Carregar variáveis de ambiente da raiz do projeto
-load_dotenv(dotenv_path="../.env")
-
-def get_admin_client():
-    """Configura a ligação à API Admin do Keycloak."""
-    return KeycloakAdmin(
-        server_url=os.getenv("KEYCLOAK_INTERNAL_URL"),
-        username=os.getenv("KEYCLOAK_ADMIN_USER"),
-        password=os.getenv("KEYCLOAK_ADMIN_PASSWORD"),
-        realm_name=os.getenv("KEYCLOAK_REALM"),
-        user_realm_name="master",  # Admin autentica no realm master
-        verify=True
-    )
+from keycloak import KeycloakPostError
+from client import get_client
 
 def main():
     parser = argparse.ArgumentParser(description="RetailCorp JML: Joiner - Criar novo utilizador")
@@ -31,7 +16,8 @@ def main():
 
     args = parser.parse_args()
 
-    keycloak_admin = get_admin_client()
+    client = get_client()
+    keycloak_admin = client.admin
 
     print(f"[*] A criar utilizador '{args.username}'...")
 
@@ -52,14 +38,13 @@ def main():
         keycloak_admin.set_user_password(user_id, args.temp_pass, temporary=True)
         print(f"[+] Password temporária definida: {args.temp_pass}")
 
-        # 3. Atribuir Role
-        role_data = keycloak_admin.get_realm_role(args.role)
+        # 3. Atribuir Role (centralizado no client)
+        role_data = client.get_role(args.role)
         keycloak_admin.assign_realm_roles(user_id, [role_data])
         print(f"[+] Role '{args.role}' atribuído com sucesso.")
 
         # 4. Configurar MFA (TOTP) se o role for sensível
-        sensitive_roles = ["admin", "hr", "store_manager"]
-        if args.role in sensitive_roles:
+        if args.role in client.MFA_REQUIRED_ROLES:
             keycloak_admin.update_user(user_id, {
                 "requiredActions": ["CONFIGURE_TOTP", "UPDATE_PASSWORD"]
             })

@@ -21,6 +21,17 @@ class KeycloakClient:
     ALLOWED_EMAIL_DOMAIN = "retailcorp.local"
     PASSWORD_LENGTH = 16
     
+    # Política de Transições Permitidas (Issue 16)
+    # Define para quais roles um determinado role pode evoluir/mudar
+    ROLE_TRANSITIONS = {
+        "cashier": ["store_manager", "warehouse", "hr"],
+        "warehouse": ["store_manager", "cashier"],
+        "store_manager": ["admin", "hr", "warehouse"],
+        "hr": ["admin", "store_manager"],
+        "supplier": ["supplier"], # Fornecedores são isolados
+        "admin": ["hr", "store_manager", "cashier", "warehouse"]
+    }
+    
     def __init__(self):
         # Prioridade para variáveis JML_*, fallback para as gerais
         self.server_url = os.getenv("JML_KEYCLOAK_URL", os.getenv("KEYCLOAK_PUBLIC_URL", "http://localhost:8080"))

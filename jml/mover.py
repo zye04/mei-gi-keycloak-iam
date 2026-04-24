@@ -1,57 +1,112 @@
 import argparse
 import sys
+import logging
+from keycloak import KeycloakGetError, KeycloakPostError, KeycloakError
 from client import get_client
 
-def main():
-    parser = argparse.ArgumentParser(description="RetailCorp JML: Mover - Alterar role e revogar sessões")
-    parser.add_argument("--username", required=True, help="Username do colaborador")
-    parser.add_argument("--from-role", required=True, help="Role antigo a remover")
-    parser.add_argument("--to-role", required=True, 
-                        choices=["admin", "hr", "store_manager", "cashier", "warehouse", "supplier"],
-                        help="Novo role a atribuir")
+# Configuração de Logs Estruturados
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - JML-MOVER - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
 
-    args = parser.parse_args()
-    client = get_client()
+class MoverError(Exception):
+    """Exceção customizada para erros de negócio no fluxo Mover."""
+    pass
+
+def process_mover(username, from_role_name, to_role_name, client=None):
+    """Lógica principal isolada para facilitar testes unitários."""
+    if client is None:
+        client = get_client()
+    
     keycloak_admin = client.admin
 
+    # 1. Validação de Política de Transição
+    allowed_targets = client.ROLE_TRANSITIONS.get(from_role_name, [])
+    if to_role_name not in allowed_targets and from_role_name != to_role_name:
+        raise MoverError(f"Transição proibida pela política: {from_role_name} -> {to_role_name}")
+
     try:
-        # 1. Obter ID do utilizador (centralizado no client)
-        user_id = client.get_user_id(args.username)
+        # 2. Obter ID e estado do utilizador
+        user_id = client.get_user_id(username)
+        user_info = keycloak_admin.get_user(user_id)
+        
+        if not user_info.get("enabled"):
+            raise MoverError(f"Utilizador '{username}' está desativado.")
 
-        print(f"[*] A processar 'Mover' para '{args.username}'...")
+        # 3. Validar existência dos Roles
+        old_role = client.get_role(from_role_name, required=True)
+        new_role = client.get_role(to_role_name, required=True)
 
-        # 2. Remover Role antigo
-        old_role_data = client.get_role(args.from_role, required=False)
-        if old_role_data:
+        # 4. Verificar se possui o role antigo
+        user_roles = keycloak_admin.get_realm_roles_of_user(user_id)
+        user_role_names = [r['name'] for r in user_roles]
+        
+        if from_role_name not in user_role_names:
+            logger.warning(f"Utilizador não possui o role '{from_role_name}'. Roles atuais: {user_role_names}")
+
+        # --- EXECUÇÃO ---
+        
+        # 5. Atribuir Novo Role
+        keycloak_admin.assign_realm_roles(user_id, [new_role])
+        logger.info(f"Novo role '{to_role_name}' atribuído.")
+
+        # 6. Remover Role Antigo com Rollback
+        try:
+            keycloak_admin.delete_realm_roles_of_user(user_id, [old_role])
+            logger.info(f"Role antigo '{from_role_name}' removido.")
+        except KeycloakError as e:
+            logger.error(f"Falha ao remover role antigo. A tentar reverter (rollback)... Erro: {e}")
             try:
-                keycloak_admin.delete_realm_roles_from_user(user_id, [old_role_data])
-                print(f"[+] Role antigo '{args.from_role}' removido.")
-            except Exception:
-                print(f"[!] Aviso: Role '{args.from_role}' não estava atribuído.")
-        else:
-            print(f"[!] Aviso: Role antigo '{args.from_role}' não existe no Keycloak. A ignorar remoção.")
+                keycloak_admin.delete_realm_roles_of_user(user_id, [new_role])
+                logger.info("Rollback concluído: Novo role removido.")
+            except Exception as rollback_err:
+                logger.critical(f"ERRO CRÍTICO: Falha no rollback! Utilizador '{username}' pode ter múltiplos roles.")
+                logger.critical("A aplicar política de emergência: DESATIVAR CONTA.")
+                keycloak_admin.update_user(user_id, {"enabled": False})
+                raise MoverError(f"Inconsistência grave. Conta desativada por segurança. Erro: {rollback_err}")
+            
+            raise MoverError(f"Transição falhou, mas o rollback foi efetuado: {e}")
 
-        # 3. Atribuir Novo Role
-        new_role_data = client.get_role(args.to_role, required=True)
-        keycloak_admin.assign_realm_roles(user_id, [new_role_data])
-        print(f"[+] Novo role '{args.to_role}' atribuído.")
+        # 7. Validação Pós-Operação
+        final_roles = keycloak_admin.get_realm_roles_of_user(user_id)
+        final_role_names = [r['name'] for r in final_roles]
+        if to_role_name not in final_role_names:
+            raise MoverError("Falha na validação final: Novo role não encontrado no utilizador.")
 
-        # 4. Revogar sessões (Logout forçado)
-        # Isto é CRÍTICO para que o novo role seja lido no próximo login
-        keycloak_admin.logout_user(user_id)
-        print("[+] Sessões ativas revogadas. O utilizador terá de fazer login novamente.")
+        # 8. Required Actions
+        current_actions = user_info.get("requiredActions", [])
+        if to_role_name in client.MFA_REQUIRED_ROLES and "CONFIGURE_TOTP" not in current_actions:
+            new_actions = list(current_actions) + ["CONFIGURE_TOTP"]
+            keycloak_admin.update_user(user_id, {"requiredActions": new_actions})
+            logger.info("MFA (TOTP) exigido para o novo role.")
 
-        # 5. Se o novo role exigir MFA e o user não tiver, forçar configuração
-        if args.to_role in client.MFA_REQUIRED_ROLES:
-            keycloak_admin.update_user(user_id, {
-                "requiredActions": ["CONFIGURE_TOTP"]
-            })
-            print("[!] Novo role sensível: Configuração de MFA (TOTP) será exigida.")
+        # 9. Logout
+        keycloak_admin.user_logout(user_id)
+        return True
 
-        print(f"\n[SUCCESS] Utilizador '{args.username}' movido para '{args.to_role}' com sucesso.")
+    except (KeycloakGetError, KeycloakPostError) as e:
+        logger.error(f"Erro na API Keycloak: {e}")
+        raise MoverError(f"Erro de comunicação com Keycloak: {e}")
 
+def main():
+    parser = argparse.ArgumentParser(description="RetailCorp JML: Mover - Transição segura de roles")
+    parser.add_argument("--username", required=True)
+    parser.add_argument("--from-role", required=True)
+    parser.add_argument("--to-role", required=True)
+
+    args = parser.parse_args()
+
+    try:
+        process_mover(args.username, args.from_role, args.to_role)
+        logger.info(f"SUCESSO: Utilizador '{args.username}' movido para '{args.to_role}'.")
+    except MoverError as e:
+        logger.error(f"Falha na operação: {e}")
+        sys.exit(1)
     except Exception as e:
-        print(f"[ERROR] Falha na operação Mover: {e}")
+        logger.critical(f"Erro inesperado: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

@@ -1,10 +1,12 @@
 import os
 import sys
+import secrets
+import string
+import re
 from dotenv import load_dotenv
 from keycloak import KeycloakAdmin
 
 # Tenta carregar o .env da raiz do projeto
-# Funciona quer o script seja corrido de /jml/ ou da raiz
 dotenv_path = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(dotenv_path=dotenv_path)
 
@@ -14,8 +16,10 @@ class KeycloakClient:
     Centraliza a configuração e garante que as variáveis JML têm prioridade.
     """
 
-    # Roles que exigem MFA obrigatório (TOTP)
+    # Configurações de segurança e negócio
     MFA_REQUIRED_ROLES = ["admin", "hr", "store_manager"]
+    ALLOWED_EMAIL_DOMAIN = "retailcorp.local"
+    PASSWORD_LENGTH = 16
     
     def __init__(self):
         # Prioridade para variáveis JML_*, fallback para as gerais
@@ -72,6 +76,24 @@ class KeycloakClient:
                 print(f"[ERROR] Role '{role_name}' não encontrado no Keycloak.")
                 sys.exit(1)
             return None
+
+    @staticmethod
+    def generate_random_password(length: int = 16) -> str:
+        """Gera uma password aleatória forte (letras, números e símbolos)."""
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+        while True:
+            password = ''.join(secrets.choice(alphabet) for _ in range(length))
+            # Garantir pelo menos um de cada tipo para passar em políticas comuns
+            if (any(c.islower() for c in password)
+                and any(c.isupper() for c in password)
+                and any(c.isdigit() for c in password)
+                and any(c in "!@#$%^&*" for c in password)):
+                return password
+
+    def validate_email(self, email: str) -> bool:
+        """Valida se o email segue o formato correto e o domínio corporativo."""
+        pattern = rf"^[a-zA-Z0-9._%+-]+@{re.escape(self.ALLOWED_EMAIL_DOMAIN)}$"
+        return bool(re.match(pattern, email))
 
 def get_admin_client():
     """Função utilitária para os scripts JML."""

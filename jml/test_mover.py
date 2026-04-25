@@ -37,7 +37,7 @@ class TestMover(unittest.TestCase):
         self.assertTrue(result)
         # Verifica se atribuiu o novo e removeu o antigo
         self.mock_admin.assign_realm_roles.assert_called()
-        self.mock_admin.delete_realm_roles_from_user.assert_called()
+        self.mock_admin.delete_realm_roles_of_user.assert_called()
         # Verifica se forçou MFA
         self.mock_admin.update_user.assert_called_with("user-123", {"requiredActions": ["CONFIGURE_TOTP"]})
 

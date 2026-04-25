@@ -48,14 +48,15 @@ Este cenário serve de base ao trabalho prático da UC de Gestão de Identidade 
 1. HR cria utilizador no Keycloak via `jml/joiner.py`
 2. Atribui role inicial consoante o departamento (ex: `cashier` para nova contratação de loja)
 3. Para roles sensíveis (`admin`, `hr`, `store_manager`), o TOTP é definido como Required Action
-4. Utilizador recebe credenciais temporárias e é obrigado a alterar a password no primeiro login
+4. Utilizador recebe password temporária e, no primeiro acesso, o Keycloak força o setup inicial (alteração de password e, quando aplicável, TOTP)
+5. Nos testes E2E validados, a conta Joiner é verificada como criada, com role atribuída e setup pendente no Keycloak
 
 ### Mover — Promoção Interna
 
 **Cenário concreto:** Cashier promovido a Store Manager
 
 1. HR executa `jml/mover.py --username joao.silva --from cashier --to store_manager`
-2. Script remove role `cashier`, atribui `store_manager`
+2. Script atribui `store_manager`, remove `cashier` e valida a transição segundo a política de roles
 3. Sessões ativas são revogadas imediatamente (o utilizador é forçado a re-autenticar)
 4. No novo login, é exigida a configuração de TOTP (Required Action)
 5. Novo acesso reflete imediatamente as novas permissões
@@ -69,6 +70,7 @@ Este cenário serve de base ao trabalho prático da UC de Gestão de Identidade 
 3. Remove todas as roles do utilizador
 4. Desativa a conta (enabled: false)
 5. Acesso bloqueado imediatamente sem eliminar o histórico de auditoria
+6. Nos testes E2E validados, o login posterior falha e as sessões aparecem revogadas no Keycloak
 
 ---
 

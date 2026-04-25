@@ -97,8 +97,9 @@ sequenceDiagram
     S->>K: POST /users/{id}/role-mappings/realm
     Note over S,K: Se role in [admin,hr,store_manager]
     S->>K: PUT /users/{id} requiredActions=[CONFIGURE_TOTP]
+    Note over S,K: Conta criada com password temporária e setup inicial pendente
     K-->>S: 201 Created
-    S-->>HR: ✓ Utilizador criado | username | temp-password
+    S-->>HR: ✓ Utilizador criado | username | password temporária
 ```
 
 ### Mover
@@ -110,13 +111,13 @@ sequenceDiagram
     participant K as Keycloak Admin API
 
     HR->>S: python mover.py --username --from-role --to-role
-    S->>K: DELETE /users/{id}/role-mappings/realm [old]
     S->>K: POST /users/{id}/role-mappings/realm [new]
-    S->>K: DELETE /users/{id}/sessions (revoga sessão ativa)
+    S->>K: DELETE /users/{id}/role-mappings/realm [old]
+    S->>K: DELETE /users/{id}/sessions (revoga sessões ativas)
     Note over S,K: Se new_role exige TOTP
     S->>K: PUT /users/{id} requiredActions=[CONFIGURE_TOTP]
     K-->>S: 204 No Content
-    S-->>HR: ✓ Role atualizado | sessões revogadas
+    S-->>HR: ✓ Role atualizado | sessões revogadas | MFA exigido quando aplicável
 ```
 
 ### Leaver (Offboarding Seguro)
@@ -134,7 +135,7 @@ sequenceDiagram
     S->>K: DELETE /users/{id}/sessions (revoga sessões)
     S->>K: DELETE /users/{id}/role-mappings/realm (limpa privilégios)
     K-->>S: 204 No Content
-    S-->>HR: ✓ Relatório de Auditoria JSON (Trilho de Auditoria)
+    S-->>HR: ✓ Relatório de Auditoria JSON (trilho de auditoria + offboarding concluído)
 ```
 
 ---
@@ -180,7 +181,7 @@ Três níveis complementares de rasto de segurança:
 |-------|--------|----------|---------|
 | **Keycloak Events** | Keycloak (BD) | Login, logout, MFA, erros, alterações admin | Admin Console → Events |
 | **App Audit Log** | FastAPI (ficheiro JSON) | Acessos a rotas protegidas, 403s | `/admin/audit` (role admin) |
-| **JML Audit Trail** | Scripts CLI (Output/Log) | Detalhe operacional de Joiner/Mover/Leaver | Logs do sistema / Stdout |
+| **JML Audit Trail** | Scripts CLI (Output/Log) | Detalhe operacional de Joiner/Mover/Leaver, incluindo setup pendente, revogação de sessões e bloqueio de login | Logs do sistema / Stdout |
 
 ### Política de Offboarding (Leaver)
 Para garantir a conformidade e integridade dos dados históricos:

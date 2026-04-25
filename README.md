@@ -111,6 +111,21 @@ python jml/mover.py --username joao.silva --from-role cashier --to-role store_ma
 python jml/leaver.py --username joao.silva --confirm
 ```
 
+### Testes de Integração E2E (Fase 3)
+
+Para validar a implementação de ponta a ponta dos fluxos Joiner, Mover e Leaver:
+
+```bash
+cd jml
+python -m pytest test_integration_joiner.py test_integration_mover.py test_integration_leaver.py -v
+```
+Estes testes validam automaticamente:
+- Joiner: criação de conta, atribuição de role e estado inicial com setup pendente no Keycloak.
+- Mover: sessão ativa antes da transição, revogação de sessões, mudança de role e exigência de MFA para roles sensíveis.
+- Leaver: sessão ativa antes do offboarding, desativação da conta, revogação de sessões e bloqueio de login após a saída.
+
+Para a descrição funcional e os fluxos de arquitetura, ver [docs/use-case.md](docs/use-case.md) e [docs/architecture.md](docs/architecture.md).
+
 ---
 
 ## Arquitetura

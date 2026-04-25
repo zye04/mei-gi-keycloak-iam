@@ -78,6 +78,44 @@ class KeycloakClient:
             sys.exit(1)
         return user_id
 
+    def get_user_sessions(self, user_id: str):
+        """Retorna lista de sessões ativas do utilizador."""
+        try:
+            return self.admin.get_user_sessions(user_id)
+        except AttributeError:
+            # Fallback para versões com API alternativa
+            try:
+                return self.admin.get_sessions(user_id)
+            except Exception:
+                pass
+
+            # Fallback HTTP direto usando token da connection
+            try:
+                import requests
+                url = f"{self.server_url}/admin/realms/{self.realm_name}/users/{user_id}/sessions"
+
+                token_data = getattr(self.admin.connection, "token", None)
+                access_token = None
+                if isinstance(token_data, dict):
+                    access_token = token_data.get("access_token")
+
+                if not access_token:
+                    try:
+                        token_data = self.admin.connection.refresh_token()
+                        if isinstance(token_data, dict):
+                            access_token = token_data.get("access_token")
+                    except Exception:
+                        access_token = None
+
+                if not access_token:
+                    return []
+
+                headers = {"Authorization": f"Bearer {access_token}"}
+                response = requests.get(url, headers=headers, timeout=10)
+                return response.json() if response.status_code == 200 else []
+            except Exception:
+                return []
+
     def get_role(self, role_name: str, required: bool = True):
         """Obtém a representação do role e valida se existe."""
         try:

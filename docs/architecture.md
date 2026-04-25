@@ -119,7 +119,7 @@ sequenceDiagram
     S-->>HR: ✓ Role atualizado | sessões revogadas
 ```
 
-### Leaver
+### Leaver (Offboarding Seguro)
 
 ```mermaid
 sequenceDiagram
@@ -127,12 +127,14 @@ sequenceDiagram
     participant S as jml/leaver.py
     participant K as Keycloak Admin API
 
-    HR->>S: python leaver.py --username
-    S->>K: DELETE /users/{id}/sessions
-    S->>K: DELETE /users/{id}/role-mappings/realm [all]
+    HR->>S: python leaver.py --username --confirm [--dry-run]
+    S->>K: GET /users/{id} (valida existência e criticidade)
+    Note over S,K: Se --dry-run: apenas simula os passos
     S->>K: PUT /users/{id} {enabled: false}
+    S->>K: DELETE /users/{id}/sessions (revoga sessões)
+    S->>K: DELETE /users/{id}/role-mappings/realm (limpa privilégios)
     K-->>S: 204 No Content
-    S-->>HR: ✓ Conta desativada | sessões revogadas
+    S-->>HR: ✓ Relatório de Auditoria JSON (Trilho de Auditoria)
 ```
 
 ---
@@ -172,12 +174,20 @@ Realm: retailcorp
 
 ## Estratégia de Auditoria
 
-Dois níveis complementares:
+Três níveis complementares de rasto de segurança:
 
 | Nível | Origem | Conteúdo | Consulta |
 |-------|--------|----------|---------|
-| **Keycloak Events** | Keycloak (BD) | Login, logout, MFA, erros | Admin Console → Events |
+| **Keycloak Events** | Keycloak (BD) | Login, logout, MFA, erros, alterações admin | Admin Console → Events |
 | **App Audit Log** | FastAPI (ficheiro JSON) | Acessos a rotas protegidas, 403s | `/admin/audit` (role admin) |
+| **JML Audit Trail** | Scripts CLI (Output/Log) | Detalhe operacional de Joiner/Mover/Leaver | Logs do sistema / Stdout |
+
+### Política de Offboarding (Leaver)
+Para garantir a conformidade e integridade dos dados históricos:
+1. **Desativação Progressiva**: As contas nunca são apagadas (`DELETE_USER`), são apenas desativadas (`enabled: false`).
+2. **Evidência Digital**: Cada operação gera um relatório JSON de auditoria com timestamp, operador e passos executados.
+3. **Dry-Run**: Possibilidade de validar o impacto da desativação antes da execução real.
+4. **Isolamento**: Remoção de roles para impedir acessos residuais, mantendo o histórico de auditoria no Keycloak.
 
 ### Eventos Keycloak configurados
 

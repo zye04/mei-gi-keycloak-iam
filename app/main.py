@@ -62,3 +62,23 @@ async def dashboard(request: Request):
 @app.get("/admin")
 async def admin_panel(user: dict = Depends(require_role("admin"))):
     return {"message": "Welcome, Administrator", "user": user["preferred_username"]}
+
+@app.get("/pos")
+async def pos_module(user: dict = Depends(require_role("admin", "store_manager", "cashier"))):
+    return {"module": "Point of Sale", "user": user["preferred_username"]}
+
+@app.get("/inventory")
+async def inventory_module(user: dict = Depends(require_role("admin", "store_manager", "warehouse"))):
+    return {"module": "Inventory Management", "user": user["preferred_username"]}
+
+@app.get("/reports")
+async def reports_module(user: dict = Depends(require_role("admin", "store_manager"))):
+    return {"module": "Financial Reports", "user": user["preferred_username"]}
+
+@app.get("/suppliers")
+async def suppliers_module(user: dict = Depends(require_role("admin", "supplier"))):
+    return {"module": "B2B Supplier Portal", "user": user["preferred_username"]}
+
+@app.get("/hr")
+async def hr_module(user: dict = Depends(require_role("admin", "hr"))):
+    return {"module": "HR Management & JML", "user": user["preferred_username"]}

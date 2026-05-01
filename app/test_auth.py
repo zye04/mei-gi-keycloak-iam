@@ -90,3 +90,65 @@ def test_require_role_edge_cases():
     with pytest.raises(Exception) as excinfo:
         checker(mock_request)
     assert excinfo.value.status_code == 403
+
+# --- Testes da Matriz de Acesso (Issue 13) ---
+
+@pytest.fixture
+def mock_req():
+    req = MagicMock()
+    req.client.host = "127.0.0.1"
+    return req
+
+def test_matrix_admin_access(mock_req):
+    """Admin deve ter acesso a tudo."""
+    mock_req.session = {"user": {"preferred_username": "admin", "realm_access": {"roles": ["admin"]}}}
+    
+    # Rotas que o admin deve conseguir aceder
+    assert require_role("admin")(mock_req)
+    assert require_role("admin", "hr")(mock_req)
+    assert require_role("admin", "supplier")(mock_req)
+
+def test_matrix_cashier_access(mock_req):
+    """Cashier acede a POS, mas é bloqueado em Admin e Reports."""
+    mock_req.session = {"user": {"preferred_username": "caixa1", "realm_access": {"roles": ["cashier"]}}}
+    
+    # Sucesso: POS (roles: admin, store_manager, cashier)
+    assert require_role("admin", "store_manager", "cashier")(mock_req)
+    
+    # Bloqueio: Admin
+    mock_req.url.path = "/admin"
+    with pytest.raises(Exception) as exc:
+        require_role("admin")(mock_req)
+    assert exc.value.status_code == 403
+
+    # Bloqueio: Reports (roles: admin, store_manager)
+    mock_req.url.path = "/reports"
+    with pytest.raises(Exception) as exc:
+        require_role("admin", "store_manager")(mock_req)
+    assert exc.value.status_code == 403
+
+def test_matrix_supplier_access(mock_req):
+    """Supplier acede a B2B, mas é bloqueado em Inventory."""
+    mock_req.session = {"user": {"preferred_username": "fornecedor1", "realm_access": {"roles": ["supplier"]}}}
+    
+    # Sucesso: Suppliers (roles: admin, supplier)
+    assert require_role("admin", "supplier")(mock_req)
+    
+    # Bloqueio: Inventory (roles: admin, store_manager, warehouse)
+    mock_req.url.path = "/inventory"
+    with pytest.raises(Exception) as exc:
+        require_role("admin", "store_manager", "warehouse")(mock_req)
+    assert exc.value.status_code == 403
+
+def test_matrix_hr_access(mock_req):
+    """HR acede a HR data, mas é bloqueado em POS."""
+    mock_req.session = {"user": {"preferred_username": "rh1", "realm_access": {"roles": ["hr"]}}}
+    
+    # Sucesso: HR (roles: admin, hr)
+    assert require_role("admin", "hr")(mock_req)
+    
+    # Bloqueio: POS
+    mock_req.url.path = "/pos"
+    with pytest.raises(Exception) as exc:
+        require_role("admin", "store_manager", "cashier")(mock_req)
+    assert exc.value.status_code == 403

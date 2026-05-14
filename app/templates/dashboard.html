@@ -163,6 +163,12 @@
           <span class="label">Gestão de identidades</span>
           <span class="value"><a href="/jml" style="color:#1a1a2e;font-weight:500;">Painel JML →</a></span>
         </div>
+        {% if "admin" in user.realm_access.roles %}
+        <div class="field">
+          <span class="label">Registos de auditoria</span>
+          <span class="value"><a href="/admin/audit" style="color:#1a1a2e;font-weight:500;">Painel de Auditoria →</a></span>
+        </div>
+        {% endif %}
       </div>
       {% endif %}
 

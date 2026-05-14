@@ -7,6 +7,7 @@ from auth import oauth  # noqa: F401 — registo do cliente OIDC
 from routers.auth import router as auth_router
 from routers.modules import router as modules_router
 from routers.jml import router as jml_router
+from routers.audit import router as audit_router
 
 app = FastAPI(title="RetailCorp Portal")
 
@@ -28,6 +29,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(modules_router)
 app.include_router(jml_router)
+app.include_router(audit_router)
 
 
 @app.get("/")

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>RetailCorp · Painel JML</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f6f9;
+      color: #333;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 16px 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 { font-size: 1.2rem; letter-spacing: 0.05em; }
+
+    header nav { display: flex; gap: 12px; align-items: center; }
+
+    header a {
+      color: #e0e0e0;
+      text-decoration: none;
+      font-size: 0.875rem;
+      border: 1px solid #555;
+      padding: 6px 14px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    header a:hover { background: #333; }
+
+    main {
+      flex: 1;
+      padding: 40px 32px;
+      max-width: 760px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .page-title {
+      margin-bottom: 32px;
+    }
+
+    .page-title h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .page-title p { color: #666; font-size: 0.9rem; }
+
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .card-header .icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .icon-joiner { background: #e8f5e9; }
+    .icon-mover  { background: #e3f2fd; }
+    .icon-leaver { background: #fce4ec; }
+
+    .card-header h3 {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .card-header p {
+      font-size: 0.8rem;
+      color: #888;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .form-grid .full { grid-column: 1 / -1; }
+
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #555;
+      margin-bottom: 5px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      background: #fff;
+      transition: border-color 0.15s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #1a1a2e;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.875rem;
+      color: #555;
+      margin-top: 4px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      width: auto;
+      accent-color: #1a1a2e;
+    }
+
+    button[type="submit"] {
+      margin-top: 18px;
+      padding: 10px 22px;
+      background: #1a1a2e;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button[type="submit"]:hover { background: #2d2d4e; }
+    button[type="submit"]:disabled { background: #aaa; cursor: not-allowed; }
+
+    .result {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      white-space: pre-wrap;
+      display: none;
+    }
+
+    .result.success { background: #f0faf0; border: 1px solid #a5d6a7; color: #1b5e20; }
+    .result.error   { background: #fff3f3; border: 1px solid #ef9a9a; color: #b71c1c; }
+    .result.visible { display: block; }
+
+    .badge {
+      display: inline-block;
+      background: #1a1a2e;
+      color: #fff;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>RetailCorp Portal</h1>
+    <nav>
+      <a href="/dashboard">Dashboard</a>
+      <a href="/logout">Terminar sessão</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="page-title">
+      <h2>Painel JML</h2>
+      <p>Joiner · Mover · Leaver — operações de gestão do ciclo de vida de identidades</p>
+    </div>
+
+    <!-- ===== JOINER ===== -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-joiner">👤</div>
+        <div>
+          <h3>Joiner — Novo colaborador</h3>
+          <p>Cria conta, atribui role e define ações obrigatórias (MFA se role sensível)</p>
+        </div>
+      </div>
+
+      <form id="form-joiner">
+        <div class="form-grid">
+          <div>
+            <label for="j-username">Username</label>
+            <input id="j-username" type="text" placeholder="ana.silva" required />
+          </div>
+          <div>
+            <label for="j-email">Email</label>
+            <input id="j-email" type="email" placeholder="ana.silva@retailcorp.local" required />
+          </div>
+          <div>
+            <label for="j-first">Primeiro nome</label>
+            <input id="j-first" type="text" placeholder="Ana" required />
+          </div>
+          <div>
+            <label for="j-last">Apelido</label>
+            <input id="j-last" type="text" placeholder="Silva" required />
+          </div>
+          <div class="full">
+            <label for="j-role">Role</label>
+            <select id="j-role" required>
+              <option value="">Selecionar role...</option>
+              <option value="cashier">cashier</option>
+              <option value="warehouse">warehouse</option>
+              <option value="store_manager">store_manager ⚠ (MFA obrigatório)</option>
+              <option value="hr">hr ⚠ (MFA obrigatório)</option>
+              <option value="admin">admin ⚠ (MFA obrigatório)</option>
+              <option value="supplier">supplier</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit">Criar colaborador</button>
+        <div id="result-joiner" class="result"></div>
+      </form>
+    </div>
+
+    <!-- ===== MOVER ===== -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-mover">🔄</div>
+        <div>
+          <h3>Mover — Transição de role</h3>
+          <p>Troca de role com validação de política, revogação de sessão e MFA se necessário</p>
+        </div>
+      </div>
+
+      <form id="form-mover">
+        <div class="form-grid">
+          <div class="full">
+            <label for="m-username">Username</label>
+            <input id="m-username" type="text" placeholder="ana.silva" required />
+          </div>
+          <div>
+            <label for="m-from">Role atual (from)</label>
+            <select id="m-from" required>
+              <option value="">Selecionar...</option>
+              <option value="cashier">cashier</option>
+              <option value="warehouse">warehouse</option>
+              <option value="store_manager">store_manager</option>
+              <option value="hr">hr</option>
+              <option value="admin">admin</option>
+              <option value="supplier">supplier</option>
+            </select>
+          </div>
+          <div>
+            <label for="m-to">Novo role (to)</label>
+            <select id="m-to" required>
+              <option value="">Selecionar...</option>
+              <option value="cashier">cashier</option>
+              <option value="warehouse">warehouse</option>
+              <option value="store_manager">store_manager</option>
+              <option value="hr">hr</option>
+              <option value="admin">admin</option>
+              <option value="supplier">supplier</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit">Executar transição</button>
+        <div id="result-mover" class="result"></div>
+      </form>
+    </div>
+
+    <!-- ===== LEAVER ===== -->
+    <div class="card">
+      <div class="card-header">
+        <div class="icon icon-leaver">🚪</div>
+        <div>
+          <h3>Leaver — Offboarding</h3>
+          <p>Desativa conta, revoga sessões e remove roles. Dry-run disponível para simulação.</p>
+        </div>
+      </div>
+
+      <form id="form-leaver">
+        <div class="form-grid">
+          <div class="full">
+            <label for="l-username">Username</label>
+            <input id="l-username" type="text" placeholder="ana.silva" required />
+          </div>
+          <div class="full">
+            <label class="checkbox-row">
+              <input id="l-dryrun" type="checkbox" />
+              Dry-run (simular sem persistir alterações)
+            </label>
+          </div>
+        </div>
+        <button type="submit">Executar offboarding</button>
+        <div id="result-leaver" class="result"></div>
+      </form>
+    </div>
+
+  </main>
+
+  <footer>RetailCorp IAM · MEI ESTG-IPP</footer>
+
+  <script>
+    function showResult(id, data, ok) {
+      const el = document.getElementById(id);
+      el.textContent = JSON.stringify(data, null, 2);
+      el.className = "result visible " + (ok ? "success" : "error");
+    }
+
+    async function postJml(url, body, resultId, btn) {
+      btn.disabled = true;
+      btn.textContent = "A processar...";
+      try {
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await resp.json();
+        showResult(resultId, data, resp.ok);
+      } catch (err) {
+        showResult(resultId, { error: err.message }, false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = btn.dataset.label;
+      }
+    }
+
+    // --- Joiner ---
+    const btnJoiner = document.querySelector("#form-joiner button");
+    btnJoiner.dataset.label = btnJoiner.textContent;
+    document.getElementById("form-joiner").addEventListener("submit", e => {
+      e.preventDefault();
+      postJml("/jml/joiner", {
+        username:   document.getElementById("j-username").value.trim(),
+        email:      document.getElementById("j-email").value.trim(),
+        first_name: document.getElementById("j-first").value.trim(),
+        last_name:  document.getElementById("j-last").value.trim(),
+        role:       document.getElementById("j-role").value,
+      }, "result-joiner", btnJoiner);
+    });
+
+    // --- Mover ---
+    const btnMover = document.querySelector("#form-mover button");
+    btnMover.dataset.label = btnMover.textContent;
+    document.getElementById("form-mover").addEventListener("submit", e => {
+      e.preventDefault();
+      postJml("/jml/mover", {
+        username:  document.getElementById("m-username").value.trim(),
+        from_role: document.getElementById("m-from").value,
+        to_role:   document.getElementById("m-to").value,
+      }, "result-mover", btnMover);
+    });
+
+    // --- Leaver ---
+    const btnLeaver = document.querySelector("#form-leaver button");
+    btnLeaver.dataset.label = btnLeaver.textContent;
+    document.getElementById("form-leaver").addEventListener("submit", e => {
+      e.preventDefault();
+      postJml("/jml/leaver", {
+        username: document.getElementById("l-username").value.trim(),
+        dry_run:  document.getElementById("l-dryrun").checked,
+      }, "result-leaver", btnLeaver);
+    });
+  </script>
+
+</body>
+</html>

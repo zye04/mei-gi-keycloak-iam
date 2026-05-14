@@ -2,8 +2,8 @@ import logging
 from fastapi import Request, HTTPException, status
 from authlib.integrations.starlette_client import OAuth
 from config import settings
+import audit
 
-# Configure basic logging for auditing (Phase 4 precursor)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -57,7 +57,7 @@ def require_role(*required_roles: str):
         path = request.url.path
 
         if not user:
-            logger.warning(f"Access Denied: Unauthenticated attempt to {path} from IP {client_ip}")
+            audit.log_event(audit.ACCESS_DENIED_401, "anonymous", path, client_ip)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Sessão expirada ou não autenticada. Por favor, faça login."
@@ -65,28 +65,26 @@ def require_role(*required_roles: str):
 
         username = user.get("preferred_username", "unknown_user")
 
-        # Safe extraction of roles with edge case handling
         realm_access = user.get("realm_access", {})
         if not isinstance(realm_access, dict):
             realm_access = {}
         user_roles = realm_access.get("roles", [])
-
         if not isinstance(user_roles, list):
             user_roles = []
 
-        # Check if at least one of the required_roles is in user_roles
         has_access = any(role in user_roles for role in required_roles)
 
         if not has_access:
-            logger.error(
-                f"Access Denied: User '{username}' (Roles: {user_roles}) "
-                f"tried to access {path} without required roles: {required_roles}"
+            audit.log_event(
+                audit.ACCESS_DENIED_403, username, path, client_ip,
+                roles=user_roles,
+                detail=f"Requer um dos roles: {list(required_roles)}",
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permissões insuficientes. Requer um dos roles: {list(required_roles)}"
             )
 
-        logger.info(f"Access Granted: User '{username}' accessed {path}")
+        audit.log_event(audit.ACCESS_GRANTED, username, path, client_ip, roles=user_roles)
         return user
     return role_checker
